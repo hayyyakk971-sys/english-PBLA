@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dark Hour - Vercel Demo</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 1000px; margin: 0 auto; background: white; border-radius: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.3); overflow: hidden; }
+        header { background: linear-gradient(135deg, #1a2980 0%, #26d0ce 100%); color: white; padding: 30px; text-align: center; }
+        h1 { font-size: 2.8em; margin-bottom: 10px; }
+        .subtitle { font-size: 1.2em; opacity: 0.9; }
+        .dashboard { padding: 30px; }
+        .status-container { display: flex; justify-content: center; gap: 40px; margin-bottom: 30px; }
+        .status-box { text-align: center; padding: 25px; border-radius: 15px; min-width: 250px; box-shadow: 0 10px 20px rgba(0,0,0,0.1); background: #f8f9fa; }
+        .status-title { font-size: 1.3em; margin-bottom: 15px; color: #555; }
+        .status-value { font-size: 2.5em; font-weight: bold; padding: 15px; border-radius: 12px; margin: 10px 0; }
+        .light-on { background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); color: white; animation: pulse-red 2s infinite; }
+        .light-off { background: linear-gradient(135deg, #27ae60 0%, #219653 100%); color: white; }
+        .room-full { background: linear-gradient(135deg, #3498db 0%, #2980b9 100%); color: white; }
+        .room-empty { background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%); color: white; }
+        
+        .alert-box { background: #ffeaa7; border: 4px solid #fdcb6e; padding: 25px; margin: 30px; border-radius: 15px; text-align: center; font-size: 1.4em; display: none; box-shadow: 0 5px 15px rgba(253, 203, 110, 0.3); }
+        .alert-show { display: block; animation: alert-pulse 1s infinite; }
+        
+        .stats { display: flex; justify-content: space-around; margin: 30px; padding: 25px; background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%); color: white; border-radius: 15px; box-shadow: 0 10px 20px rgba(0,0,0,0.2); }
+        .stat-item { text-align: center; }
+        .stat-value { font-size: 2.2em; font-weight: bold; margin-bottom: 5px; }
+        .stat-label { font-size: 1em; opacity: 0.9; }
+        
+        /* Hidden Admin Button */
+        #adminAccessBtn { position: fixed; bottom: 30px; right: 30px; width: 60px; height: 60px; background: rgba(0,0,0,0); border: none; cursor: pointer; opacity: 0.2; z-index: 1000; }
+        #adminAccessBtn:hover { opacity: 0.4; }
+        
+        /* Admin Panel */
+        #adminPanel { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 2000; padding: 20px; overflow-y: auto; }
+        .admin-content { background: white; max-width: 600px; margin: 50px auto; padding: 40px; border-radius: 25px; position: relative; box-shadow: 0 20px 60px rgba(0,0,0,0.4); }
+        .close-admin { position: absolute; top: 25px; right: 25px; background: #e74c3c; color: white; border: none; width: 45px; height: 45px; border-radius: 50%; cursor: pointer; font-size: 1.8em; font-weight: bold; }
+        .admin-options { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; margin: 30px 0; }
+        .admin-btn { padding: 35px; border: none; border-radius: 15px; cursor: pointer; font-size: 1.3em; transition: all 0.3s ease; box-shadow: 0 8px 20px rgba(0,0,0,0.15); }
+        .admin-btn:hover { transform: translateY(-5px) scale(1.05); box-shadow: 0 15px 30px rgba(0,0,0,0.2); }
+        
+        /* Info Box */
+        .info-box { background: #e8f4fc; padding: 20px; border-radius: 12px; margin: 25px 0; border-left: 5px solid #3498db; }
+        
+        /* Animations */
+        @keyframes pulse-red { 0% { opacity: 1; } 50% { opacity: 0.8; } 100% { opacity: 1; } }
+        @keyframes alert-pulse { 0% { transform: scale(1); box-shadow: 0 5px 15px rgba(253, 203, 110, 0.3); } 
+                                50% { transform: scale(1.03); box-shadow: 0 10px 25px rgba(253, 203, 110, 0.5); } 
+                                100% { transform: scale(1); box-shadow: 0 5px 15px rgba(253, 203, 110, 0.3); } }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .status-container { flex-direction: column; align-items: center; }
+            .admin-options { grid-template-columns: 1fr; }
+            .status-box { min-width: 200px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🌍 Dark Hour Awareness</h1>
+            <p class="subtitle">Real-time Energy Monitoring System - Vercel Demo</p>
+        </header>
+        
+        <div class="dashboard">
+            <div class="status-container">
+                <div class="status-box">
+                    <div class="status-title">💡 Light Status</div>
+                    <div id="lightStatus" class="status-value light-off">OFF</div>
+                    <div style="font-size: 0.9em; color: #777; margin-top: 10px;">Controls room lighting</div>
+                </div>
+                <div class="status-box">
+                    <div class="status-title">👥 Room Occupancy</div>
+                    <div id="occupancyStatus" class="status-value room-empty">EMPTY</div>
+                    <div style="font-size: 0.9em; color: #777; margin-top: 10px;">Detects if people are present</div>
+                </div>
+            </div>
+            
+            <div id="alertBox" class="alert-box">
+                🚨 <strong>ENERGY WASTE ALERT!</strong><br>
+                Room is LIT but EMPTY!<br>
+                Telegram notification sent instantly!<br>
+                ESP32 would activate LED & Buzzer!
+            </div>
+            
+            <div class="info-box">
+                <h3>📋 System Rules:</h3>
+                <ul style="margin: 15px 0 15px 20px; line-height: 1.6;">
+                    <li><strong>Alert Condition:</strong> Light = ON + Occupancy = EMPTY</li>
+                    <li><strong>Immediate Action:</strong> Telegram message + ESP32 activation</li>
+                    <li><strong>Periodic Updates:</strong> Status sent every 30 minutes</li>
+                    <li><strong>Admin Control:</strong> Click bottom-right corner 3 times</li>
+                </ul>
+            </div>
+            
+            <div class="stats">
+                <div class="stat-item">
+                    <div class="stat-value" id="alertsCount">0</div>
+                    <div class="stat-label">Alerts Triggered</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="connectedDevices">1</div>
+                    <div class="stat-label">Connected Devices</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="telegramCount">0</div>
+                    <div class="stat-label">Telegram Messages</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="energySaved">0 kWh</div>
+                    <div class="stat-label">Energy Saved</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden Admin Button (Bottom Right Corner) -->
+    <button id="adminAccessBtn" title="Click here 3 times for Admin Panel"></button>
+
+    <!-- Admin Panel -->
+    <div id="adminPanel">
+        <div class="admin-content">
+            <button class="close-admin" onclick="closeAdmin()">×</button>
+            <h2 style="color: #1a2980; margin-bottom: 15px;">👑 Admin Control Panel</h2>
+            <p style="color: #666; margin-bottom: 25px;">Changes here affect ALL connected devices instantly!</p>
+            
+            <div class="info-box">
+                <p><strong>Current Status:</strong> <span id="adminLightStatus" style="color:#e74c3c;font-weight:bold">OFF</span> / <span id="adminOccupancyStatus" style="color:#f39c12;font-weight:bold">EMPTY</span></p>
+                <p><strong>Connected Devices:</strong> <span id="adminConnectedDevices" style="font-weight:bold">1</span></p>
+                <p><strong>API Status:</strong> <span id="serverStatus" style="color:green;font-weight:bold">✓ Connected</span></p>
+                <p><strong>Admin Key:</strong> <code style="background:#f1f1f1;padding:3px 6px;border-radius:3px">admin123</code></p>
+            </div>
+            
+            <h3 style="margin: 25px 0 15px 0; color: #2c3e50;">Set Room Status:</h3>
+            <div class="admin-options">
+                <button class="admin-btn" style="background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); color: white;" onclick="setStatus('light', 'ON')">
+                    💡 LIGHT ON
+                </button>
+                <button class="admin-btn" style="background: linear-gradient(135deg, #27ae60 0%, #219653 100%); color: white;" onclick="setStatus('light', 'OFF')">
+                    🌙 LIGHT OFF
+                </button>
+                <button class="admin-btn" style="background: linear-gradient(135deg, #3498db 0%, #2980b9 100%); color: white;" onclick="setStatus('occupancy', 'FULL')">
+                    👥 ROOM FULL
+                </button>
+                <button class="admin-btn" style="background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%); color: white;" onclick="setStatus('occupancy', 'EMPTY')">
+                    🚶 ROOM EMPTY
+                </button>
+            </div>
+            
+            <div style="margin: 35px 0;">
+                <button onclick="sendTestTelegram()" style="width: 100%; padding: 20px; background: linear-gradient(135deg, #0088cc 0%, #006699 100%); color: white; border: none; border-radius: 12px; font-size: 1.2em; cursor: pointer; box-shadow: 0 8px 20px rgba(0, 136, 204, 0.3);">
+                    📱 Send Test Telegram Message
+                </button>
+                <p style="text-align: center; margin-top: 12px; color: #666; font-size: 0.9em;">
+                    <em>Telegram messages are simulated in console if bot not configured</em>
+                </p>
+            </div>
+            
+            <div style="background: #f8f9fa; padding: 15px; border-radius: 10px; margin-top: 20px;">
+                <h4 style="margin-bottom: 10px; color: #2c3e50;">⚙️ System Information:</h4>
+                <p style="margin: 5px 0; font-size: 0.9em;">• Deployed on Vercel Serverless Functions</p>
+                <p style="margin: 5px 0; font-size: 0.9em;">• Real-time state synchronization</p>
+                <p style="margin: 5px 0; font-size: 0.9em;">• Auto-reset on server restart</p>
+                <p style="margin: 5px 0; font-size: 0.9em;">• Admin Key: <code>admin123</code></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ================= CONFIGURATION =================
+        const ADMIN_KEY = 'admin123';
+        const deviceId = 'device_' + Math.random().toString(36).substr(2, 9);
+        
+        // Auto-detect API base URL
+        const API_BASE = window.location.origin;
+        
+        let currentState = { light: 'OFF', occupancy: 'EMPTY', alerts: 0, telegramMessages: 0 };
+        let pollingInterval;
+        let periodicTimer;
+        let energySaved = 0;
+
+        // ================= INITIALIZATION =================
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Dark Hour System Initializing...');
+            console.log('🌐 API Base URL:', API_BASE);
+            console.log('🆔 Device ID:', deviceId);
+            console.log('🔑 Admin Key:', ADMIN_KEY);
+            
+            setupAdminAccess();
+            loadInitialState();
+            startPolling();
+            startPeriodicUpdates();
+            startEnergyCounter();
+        });
+
+        // ================= STATE MANAGEMENT =================
+        async function loadInitialState() {
+            try {
+                console.log('📡 Loading initial state from server...');
+                
+                const response = await fetch(`${API_BASE}/api/state`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        action: 'get_state', 
+                        deviceId: deviceId 
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status} - Server error`);
+                }
+                
+                const data = await response.json();
+                console.log('✅ Initial state loaded:', data);
+                
+                if (data.success) {
+                    currentState = { ...currentState, ...data.state };
+                    updateDisplay();
+                    checkAlert();
+                    
+                    // Update stats
+                    document.getElementById('alertsCount').textContent = currentState.alerts || 0;
+                    document.getElementById('connectedDevices').textContent = data.state.connectedDevices || 1;
+                }
+            } catch (error) {
+                console.error('❌ Failed to load initial state:', error);
+                console.log('⚠️ Using default state (OFF/EMPTY)');
+                updateDisplay();
+            }
+        }
+
+        // Poll for updates every 3 seconds
+        function startPolling() {
+            pollingInterval = setInterval(async () => {
+                try {
+                    const response = await fetch(`${API_BASE}/api/state`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            action: 'get_state', 
+                            deviceId: deviceId 
+                        })
+                    });
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data.success) {
+                            // Update only if state changed
+                            if (currentState.light !== data.state.light || 
+                                currentState.occupancy !== data.state.occupancy) {
+                                
+                                currentState.light = data.state.light;
+                                currentState.occupancy = data.state.occupancy;
+                                updateDisplay();
+                                checkAlert();
+                            }
+                            
+                            // Update connected devices count
+                            document.getElementById('connectedDevices').textContent = data.state.connectedDevices || 1;
+                            document.getElementById('alertsCount').textContent = data.state.alerts || 0;
+                            
+                            // Update admin panel if open
+                            if (document.getElementById('adminPanel').style.display === 'block') {
+                                document.getElementById('adminConnectedDevices').textContent = data.state.connectedDevices || 1;
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.log('📡 Polling error - server might be restarting');
+                }
+            }, 3000);
+        }
+
+        // ================= ADMIN FUNCTIONS =================
+        async function setStatus(type, value) {
+            console.log(`🔄 Admin setting ${type} to ${value}`);
+            
+            try {
+                const requestBody = {
+                    action: 'update_state',
+                    key: ADMIN_KEY
+                };
+                
+                // Add the specific field to update
+                requestBody[type] = value;
+                
+                console.log('📤 Sending update request:', requestBody);
+                
+                const response = await fetch(`${API_BASE}/api/state`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestBody)
+                });
+                
+                console.log('📥 Response status:', response.status);
+                
+                if (!response.ok) {
+                    throw new Error(`Server returned ${response.status}`);
+                }
+                
+                const data = await response.json();
+                console.log('✅ Update response:', data);
+                
+                if (data.success) {
+                    // Update local state immediately
+                    currentState[type] = value;
+                    updateDisplay();
+                    checkAlert();
+                    
+                    // Show success message
+                    alert(`✅ Status updated successfully!\n\nLight: ${currentState.light}\nOccupancy: ${currentState.occupancy}\n\nThis change will appear on ALL connected devices.`);
+                    
+                    // If alert was triggered, send Telegram immediately
+                    if (data.alertTriggered) {
+                        console.log('🚨 Alert triggered! Sending immediate Telegram...');
+                        await sendImmediateAlert();
+                    }
+                } else {
+                    alert(`❌ Error: ${data.error || 'Unknown error'}\n\nMake sure you're using the correct admin key: admin123`);
+                }
+            } catch (error) {
+                console.error('❌ Update error:', error);
+                alert(`❌ Network error: ${error.message}\n\nPlease check:\n1. You're connected to internet\n2. The Vercel deployment is running\n3. Try refreshing the page`);
+            }
+        }
+
+        // ================= ALERT SYSTEM =================
+        async function sendImmediateAlert() {
+            const message = `🚨 <b>EMERGENCY ENERGY ALERT!</b>\n\n` +
+                          `⚡ <b>Condition:</b> Lights ON in EMPTY room\n` +
+                          `🕒 <b>Time:</b> ${new Date().toLocaleTimeString()}\n` +
+                          `📍 <b>Location:</b> School Demo Room\n` +
+                          `🔧 <b>Action Taken:</b> Telegram alert sent\n` +
+                          `💡 <b>ESP32:</b> RED LED activated + BUZZER ON\n\n` +
+                          `⚠️ <i>Please turn off lights to save energy!</i>`;
+            
+            try {
+                console.log('📱 Sending immediate Telegram alert...');
+                
+                const response = await fetch(`${API_BASE}/api/telegram`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        key: ADMIN_KEY,
+                        message: message,
+                        type: 'alert',
+                        light: 'ON',
+                        occupancy: 'EMPTY'
+                    })
+                });
+                
+                const data = await response.json();
+                console.log('✅ Alert response:', data);
+                
+                // Update telegram count
+                currentState.telegramMessages++;
+                document.getElementById('telegramCount').textContent = currentState.telegramMessages;
+                
+                // Show ESP32 simulation
+                console.log('🟥 ESP32 Simulation:');
+                console.log('   • RED LED: ON');
+                console.log('   • BUZZER: ACTIVATED');
+                console.log('   • Alert signal: SENT');
+                
+            } catch (error) {
+                console.log('⚠️ Alert simulation (server error):', message);
+                console.log('🟥 ESP32 would activate LED & Buzzer');
+            }
+        }
+
+        function checkAlert() {
+            const alertBox = document.getElementById('alertBox');
+            const isAlert = currentState.light === 'ON' && currentState.occupancy === 'EMPTY';
+            
+            if (isAlert) {
+                alertBox.classList.add('alert-show');
+                console.log('🚨 ALERT CONDITION ACTIVE: Lights ON + Room EMPTY');
+            } else {
+                alertBox.classList.remove('alert-show');
+            }
+        }
+
+        // ================= PERIODIC UPDATES =================
+        function startPeriodicUpdates() {
+            // Send initial update after 10 seconds
+            setTimeout(sendPeriodicUpdate, 10000);
+            
+            // Then every 30 minutes (1800000 ms)
+            periodicTimer = setInterval(sendPeriodicUpdate, 1800000);
+            
+            console.log('⏰ Periodic updates scheduled every 30 minutes');
+        }
+
+        async function sendPeriodicUpdate() {
+            const message = `📊 <b>Periodic Room Status Update</b>\n\n` +
+                          `🕒 <b>Time:</b> ${new Date().toLocaleTimeString()}\n` +
+                          `💡 <b>Light Status:</b> ${currentState.light}\n` +
+                          `👥 <b>Room Occupancy:</b> ${currentState.occupancy}\n` +
+                          `🚨 <b>Alerts Today:</b> ${currentState.alerts || 0}\n` +
+                          `⚡ <b>Energy Saved:</b> ${energySaved.toFixed(2)} kWh\n\n` +
+                          `📈 <b>Status:</b> ${currentState.light === 'ON' && currentState.occupancy === 'EMPTY' ? '⚠️ ALERT CONDITION - Energy Waste!' : '✅ Normal - No issues'}\n\n` +
+                          `<i>Dark Hour Awareness System - Energy Monitoring</i>`;
+            
+            try {
+                console.log('⏰ Sending periodic update...');
+                
+                const response = await fetch(`${API_BASE}/api/telegram`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        key: ADMIN_KEY,
+                        message: message,
+                        type: 'periodic'
+                    })
+                });
+                
+                const data = await response.json();
+                console.log('✅ Periodic update sent:', data.message);
+                
+                // Update telegram count
+                currentState.telegramMessages++;
+                document.getElementById('telegramCount').textContent = currentState.telegramMessages;
+                
+            } catch (error) {
+                console.log('⏰ Periodic update simulation:', message.substring(0, 100) + '...');
+            }
+        }
+
+        // ================= ENERGY COUNTER =================
+        function startEnergyCounter() {
+            setInterval(() => {
+                if (currentState.light === 'OFF') {
+                    energySaved += 0.01; // Add 0.01 kWh per interval
+                    document.getElementById('energySaved').textContent = energySaved.toFixed(2) + ' kWh';
+                }
+            }, 5000); // Update every 5 seconds
+        }
+
+        // ================= DISPLAY FUNCTIONS =================
+        function updateDisplay() {
+            // Update main status display
+            const lightElem = document.getElementById('lightStatus');
+            const occElem = document.getElementById('occupancyStatus');
+            
+            lightElem.textContent = currentState.light;
+            lightElem.className = 'status-value ' + (currentState.light === 'ON' ? 'light-on' : 'light-off');
+            
+            occElem.textContent = currentState.occupancy;
+            occElem.className = 'status-value ' + (currentState.occupancy === 'FULL' ? 'room-full' : 'room-empty');
+            
+            // Update admin panel if open
+            if (document.getElementById('adminPanel').style.display === 'block') {
+                document.getElementById('adminLightStatus').textContent = currentState.light;
+                document.getElementById('adminLightStatus').style.color = currentState.light === 'ON' ? '#e74c3c' : '#27ae60';
+                
+                document.getElementById('adminOccupancyStatus').textContent = currentState.occupancy;
+                document.getElementById('adminOccupancyStatus').style.color = currentState.occupancy === 'FULL' ? '#3498db' : '#f39c12';
+            }
+        }
+
+        // ================= ADMIN ACCESS =================
+        let adminClicks = 0;
+        let adminTimer;
+
+        function setupAdminAccess() {
+            document.getElementById('adminAccessBtn').addEventListener('click', function() {
+                adminClicks++;
+                
+                if (adminClicks >= 3) {
+                    openAdminPanel();
+                    adminClicks = 0;
+                }
+                
+                clearTimeout(adminTimer);
+                adminTimer = setTimeout(() => {
+                    adminClicks = 0;
+                }, 2000);
+            });
+        }
+
+        function openAdminPanel() {
+            document.getElementById('adminPanel').style.display = 'block';
+            updateDisplay();
+            console.log('🔓 Admin panel opened');
+        }
+
+        function closeAdmin() {
+            document.getElementById('adminPanel').style.display = 'none';
+            console.log('🔒 Admin panel closed');
+        }
+
+        // ================= TEST FUNCTIONS =================
+        async function sendTestTelegram() {
+            const message = `🔔 <b>Test Message - Dark Hour System</b>\n\n` +
+                          `🕒 <b>Time:</b> ${new Date().toLocaleTimeString()}\n` +
+                          `💡 <b>Current Light:</b> ${currentState.light}\n` +
+                          `👥 <b>Current Occupancy:</b> ${currentState.occupancy}\n` +
+                          `🚨 <b>Alerts Today:</b> ${currentState.alerts || 0}\n` +
+                          `📱 <b>Telegram Messages:</b> ${currentState.telegramMessages}\n\n` +
+                          `<i>This is a test message from the admin panel.</i>`;
+            
+            try {
+                console.log('📱 Sending test Telegram...');
+                
+                const response = await fetch(`${API_BASE}/api/telegram`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        key: ADMIN_KEY,
+                        message: message,
+                        type: 'test'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                alert(`✅ Test message sent successfully!\n\nResponse: ${data.message}\n\nCheck browser console for details.`);
+                console.log('✅ Test response:', data);
+                
+                // Update telegram count
+                currentState.telegramMessages++;
+                document.getElementById('telegramCount').textContent = currentState.telegramMessages;
+                
+            } catch (error) {
+                alert('✅ Test sent in simulation mode!\n\nCheck browser console for simulated message.');
+                console.log('📱 Test simulation:', message);
+                console.log('🔧 System is working correctly in simulation mode.');
+            }
+        }
+
+        // ================= CLEANUP =================
+        window.addEventListener('beforeunload', () => {
+            clearInterval(pollingInterval);
+            clearInterval(periodicTimer);
+        });
+    </script>
+</body>
+</html>

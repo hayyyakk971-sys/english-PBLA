@@ -1,0 +1,14 @@
+{
+  "name": "dark-hour-vercel",
+  "version": "1.0.0",
+  "description": "Dark Hour Energy Awareness System for Vercel",
+  "engines": {
+    "node": ">=18.x"
+  },
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel deploy --prod"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}
